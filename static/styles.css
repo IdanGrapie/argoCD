@@ -1,0 +1,36 @@
+.weather-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start; /* Adjust if you want vertical centering */
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.weather-block {
+  width: 200px;
+  border: 1px solid #ccc;
+  background-color: #f9f9f9;
+  padding: 10px;
+  box-shadow: 0 0 5px #ccc;
+  text-align: center;
+  background-size: cover; /* Ensure the background covers the block */
+  background-position: center; /* Center the background image */
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+@media (max-width: 600px) {
+  .weather-container {
+    flex-direction: column;
+  }
+}
+
+.weather-block {
+  /* existing styles */
+  background-color: rgba(0, 0, 0, 0.5); /* semi-transparent overlay for readability */
+  color: white; /* Light color text for better contrast */
+  text-shadow: 2px 2px 4px #000000; /* Text shadow for better visibility */
+}

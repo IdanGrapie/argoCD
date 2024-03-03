@@ -1,36 +1,61 @@
-increment-version-and-tag:
-  needs: build-and-push  # This ensures tagging happens after the build-and-push job
-  runs-on: ubuntu-latest
-  steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: 0  # Fetch all history for all tags and branches
-        token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # Use PAT for checkout
+name: CI/CD Pipeline
 
-    - name: Setup Git
-      run: |
-        git config --global user.email "action@github.com"
-        git config --global user.name "GitHub Action"
+on:
+  push:
+    branches:
+      - main
 
-    - name: Fetch all tags
-      run: git fetch --tags
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
 
-    - name: Calculate new version and create tag
-      run: |
-        # Get the latest tag
-        latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
-        echo "Latest tag: $latest_tag"
+      - name: Build Docker image
+        run: docker build -t idan5567/k8s_test:${{ github.sha }} .
 
-        # Increment the patch version. Assumes the tag is in 'v<major>.<minor>.<patch>' format
-        new_tag=$(echo $latest_tag | awk -F. '{print $1"."$2"."$3+1}')
-        echo "New tag: $new_tag"
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-        # Set the new tag as an output variable using environment file
-        echo "new_tag=$new_tag" >> $GITHUB_ENV
+      - name: Push Docker image to Docker Hub
+        run: docker push idan5567/k8s_test:${{ github.sha }}
 
-    - name: Push tag
-      run: git push origin ${{ env.new_tag }}
-      env:
-        PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+	increment-version-and-tag:
+	  needs: build-and-push  # This ensures tagging happens after the build-and-push job
+	  runs-on: ubuntu-latest
+	  steps:
+	    - name: Checkout repository
+	      uses: actions/checkout@v2
+	      with:
+		fetch-depth: 0  # Fetch all history for all tags and branches
+		token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # Use PAT for checkout
+
+	    - name: Setup Git
+	      run: |
+		git config --global user.email "action@github.com"
+		git config --global user.name "GitHub Action"
+
+	    - name: Fetch all tags
+	      run: git fetch --tags
+
+	    - name: Calculate new version and create tag
+	      run: |
+		# Get the latest tag
+		latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
+		echo "Latest tag: $latest_tag"
+
+		# Increment the patch version. Assumes the tag is in 'v<major>.<minor>.<patch>' format
+		new_tag=$(echo $latest_tag | awk -F. '{print $1"."$2"."$3+1}')
+		echo "New tag: $new_tag"
+
+		# Set the new tag as an output variable using environment file
+		echo "new_tag=$new_tag" >> $GITHUB_ENV
+
+	    - name: Push tag
+	      run: git push origin ${{ env.new_tag }}
+	      env:
+		PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 

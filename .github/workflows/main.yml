@@ -54,21 +54,26 @@ jobs:
           new_tag: ${{ steps.calculate_tag.outputs.new_tag }}
 
   build-and-push-docker:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
+  needs: build
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v2
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKER_HUB_USERNAME }}
+        password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-      - name: Build and push Docker image
-        run: |
-          new_tag=${{ needs.build.outputs.new_tag }}
-          docker build -t idan5567/k8s_test:$new_tag .
-          docker push idan5567/k8s_test:$new_tag
+    - name: Build and push Docker image
+      run: |
+        new_tag=${{ needs.build.outputs.new_tag }}
+        if [ -z "$new_tag" ]; then
+          echo "New tag is empty. Please check the tag calculation step."
+          exit 1
+        fi
+        docker build -t idan5567/k8s_test:$new_tag .
+        docker push idan5567/k8s_test:$new_tag
+
 
 

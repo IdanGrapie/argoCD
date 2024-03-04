@@ -6,26 +6,10 @@ on:
       - main
 
 jobs:
-  build-and-push:
+  build:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Build Docker image
-        run: docker build -t idan5567/k8s_test:${{ github.sha }} .
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-
-      - name: Push Docker image to Docker Hub
-        run: docker push idan5567/k8s_test:${{ github.sha }}
-
-  increment-version-and-tag:
-    needs: build-and-push  # This ensures tagging happens after the build-and-push job
-    runs-on: ubuntu-latest
+    outputs:
+      new_tag: ${{ steps.tag_version.outputs.new_tag }}
     steps:
       - uses: actions/checkout@v2
         with:
@@ -41,21 +25,45 @@ jobs:
         run: git fetch --tags
 
       - name: Calculate new version and create tag
+        id: tag_version
         run: |
           # Get the latest tag
-          latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1))
+          latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
           echo "Latest tag: $latest_tag"
-
+          
           # Increment the patch version. Assumes the tag is in 'v<major>.<minor>.<patch>' format
-          new_tag=$(echo $latest_tag | awk -F. '{print $1"."$2"."$3+1}')
-          echo "New tag: $new_tag"
-
-          # Set the new tag as an output variable using environment file
-          echo "new_tag=$new_tag" >> $GITHUB_ENV
+          if [[ $latest_tag =~ (v[0-9]+.[0-9]+.[0-9]+) ]]; then
+            new_tag=$(echo $latest_tag | awk -F. '{print $1"."$2"."$3+1}')
+            echo "New tag: $new_tag"
+            echo "new_tag=$new_tag" >> $GITHUB_ENV
+            git tag -a "$new_tag" -m "New release $new_tag"
+          else
+            echo "No valid semver tag found."
+            echo "new_tag=v0.1.0" >> $GITHUB_ENV
+            git tag -a "v0.1.0" -m "First release v0.1.0"
+          fi
 
       - name: Push tag
         run: git push origin ${{ env.new_tag }}
         env:
           PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+  build-and-push-docker:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Build and push Docker image
+        run: |
+          new_tag=${{ needs.build.outputs.new_tag }}
+          docker build -t idan5567/k8s_test:$new_tag .
+          docker push idan5567/k8s_test:$new_tag
 
 

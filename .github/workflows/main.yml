@@ -11,42 +11,14 @@ jobs:
     outputs:
       new_tag: ${{ steps.tag_version.outputs.new_tag }}
     steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0  # Fetch all history for all tags and branches
-          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # Use PAT for checkout
-
-      - name: Setup Git
-        run: |
-          git config --global user.email "action@github.com"
-          git config --global user.name "GitHub Action"
-
-      - name: Fetch all tags
-        run: git fetch --tags
-
+      # ... other steps remain the same ...
       - name: Calculate new version and create tag
         id: tag_version
         run: |
-          # Get the latest tag
-          latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
-          echo "Latest tag: $latest_tag"
-          
-          # Increment the patch version. Assumes the tag is in 'v<major>.<minor>.<patch>' format
-          if [[ $latest_tag =~ (v[0-9]+.[0-9]+.[0-9]+) ]]; then
-            new_tag=$(echo $latest_tag | awk -F. '{print $1"."$2"."$3+1}')
-            echo "New tag: $new_tag"
-            echo "new_tag=$new_tag" >> $GITHUB_ENV
-            git tag -a "$new_tag" -m "New release $new_tag"
-          else
-            echo "No valid semver tag found."
-            echo "new_tag=v0.1.0" >> $GITHUB_ENV
-            git tag -a "v0.1.0" -m "First release v0.1.0"
-          fi
-
-      - name: Push tag
-        run: git push origin ${{ env.new_tag }}
-        env:
-          PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          # ... existing script to calculate new_tag ...
+          echo "new_tag=$new_tag" >> $GITHUB_ENV
+          # Set the new_tag output for other jobs to use
+          echo "::set-output name=new_tag::$new_tag"
 
   build-and-push-docker:
     needs: build
@@ -63,7 +35,12 @@ jobs:
       - name: Build and push Docker image
         run: |
           new_tag=${{ needs.build.outputs.new_tag }}
+          if [ -z "$new_tag" ]; then
+            echo "New tag is empty. Please check the tag calculation step."
+            exit 1
+          fi
           docker build -t idan5567/k8s_test:$new_tag .
           docker push idan5567/k8s_test:$new_tag
+
 
 

@@ -9,23 +9,56 @@ jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-      new_tag: ${{ steps.tag_version.outputs.new_tag }}
+      new_tag: ${{ steps.calculate_tag.outputs.new_tag }}
     steps:
-      # ... other steps remain the same ...
-      - name: Calculate new version and create tag
-        id: tag_version
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # Fetch all history for all tags and branches
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # Use PAT for checkout
+
+      - name: Setup Git
         run: |
-          # ... existing script to calculate new_tag ...
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+
+      - name: Fetch all tags
+        run: git fetch --tags
+
+      - name: Calculate new version and create tag
+        id: calculate_tag
+        run: |
+          # Get the latest tag
+          latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
+          echo "Latest tag: $latest_tag"
+          
+          # Increment the patch version. Assumes the tag is in 'v<major>.<minor>.<patch>' format
+          if [[ $latest_tag =~ (v[0-9]+.[0-9]+.[0-9]+) ]]; then
+            new_tag=$(echo $latest_tag | awk -F. '{print $1"."$2"."$3+1}')
+          else
+            echo "No valid semver tag found. Setting initial tag to v0.1.0."
+            new_tag="v0.1.0"
+          fi
+          echo "New tag: $new_tag"
+
+          # Create the new tag
+          git tag -a "$new_tag" -m "New release $new_tag"
+
+          # Write new tag to environment file
           echo "new_tag=$new_tag" >> $GITHUB_ENV
           # Set the new_tag output for other jobs to use
-          echo "::set-output name=new_tag::$new_tag"
+          echo "new_tag=$new_tag" >> $GITHUB_ENV
+
+      - name: Push new tag
+        run: git push origin $new_tag
+        env:
+          new_tag: ${{ steps.calculate_tag.outputs.new_tag }}
 
   build-and-push-docker:
     needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      
+
       - name: Log in to Docker Hub
         uses: docker/login-action@v1
         with:
@@ -35,12 +68,7 @@ jobs:
       - name: Build and push Docker image
         run: |
           new_tag=${{ needs.build.outputs.new_tag }}
-          if [ -z "$new_tag" ]; then
-            echo "New tag is empty. Please check the tag calculation step."
-            exit 1
-          fi
           docker build -t idan5567/k8s_test:$new_tag .
           docker push idan5567/k8s_test:$new_tag
-
 
 

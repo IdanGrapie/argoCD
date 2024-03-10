@@ -12,7 +12,8 @@
 
 ## Expose Argo CD UI via NodePort:
 Change the Argo CD Server service type to NodePort:
- kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "NodePort"}}'
+
+kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "NodePort"}}'
 
 
 ## Get the NodePort:
@@ -23,5 +24,7 @@ Change the Argo CD Server service type to NodePort:
 
 ## Log into Argo CD UI:
 The default username is admin.
+
 To get the password, use:
- kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d
+
+kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d

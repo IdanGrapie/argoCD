@@ -1,6 +1,6 @@
 FROM python:3.9-slim
 
-WORKDIR /home/idan/new/gitt/idan.anav/devops/Docker/webapp
+WORKDIR /app
 
 COPY . .
 

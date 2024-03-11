@@ -18,4 +18,4 @@ spec:
       - name: webapp-container
         image: idan5567/k8s_test:latest  
         ports:
-        - containerPort: 800
+        - containerPort: 80

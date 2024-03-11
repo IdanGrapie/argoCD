@@ -74,6 +74,7 @@ jobs:
           fi
           docker build -t idan5567/k8s_test:$new_tag .
           docker push idan5567/k8s_test:$new_tag
+          docker push idan5567/k8s_test:latest 
 
 
 
